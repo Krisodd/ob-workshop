@@ -1,0 +1,175 @@
+openapi: 3.0.1
+info:
+  title: Open Banking example API
+  version: 1.0.0
+  description: |
+    Dette er kun en eksempelkontrakt for et Open Banking API. Den inneholder flere variasjoner av elementer fra en OpenApi 3 kontrakt for å illustrere hva som er mulig.
+    
+    `description` kommer med støtte for Markdown av typen [CommonMark](http://spec.commonmark.org/).
+    Det innebærer støtte for:
+      * Lister
+      * [lenker](https://example.com), 
+      * `kode` og 
+        ```
+          //kode
+          //over 
+          //flere linjer
+        ```
+      * *Uthevet* og **fet** tekst
+      * med mere
+  contact: 
+    name: Open banking
+    url: portal.spvdevapi.no
+    email: openbankingsupport@spv.no
+servers:
+  - url: https://{api}.spvdevapi.no
+    description: Production API
+  - url: https://{api}-test.spvdevapi.no
+    description: Test API
+security:
+  - oAuth: 
+    - read:examples
+tags:
+  - name: examples
+paths:
+  /:
+    get:
+      summary: List all examples
+      tags:
+        - examples
+      parameters:
+        - $ref: '#/components/parameters/X-Request-ID'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/skip'
+      responses:
+        '200':
+          description: Example response
+          content:
+            'application/json; charset=utf-8' :
+              schema:
+                type: array
+                items:
+                   $ref: '#/components/schemas/example'
+          headers:
+            X-Request-ID:
+              description: ID of the request, unique to the call, as determined by the #initiating party.
+              schema:
+                type: string
+                format: uuid 
+    post:
+      summary: Create a new example
+      tags:
+        - examples
+      parameters:
+        - $ref: '#/components/parameters/X-Request-ID'
+      requestBody:
+        $ref: '#/components/requestBodies/example_create'
+      responses:
+        '201':
+          $ref: '#/components/responses/example_create_201'
+  /{exampleId}:
+    get:
+      summary: Get example by id
+      tags:
+        - examples
+      parameters:
+        - $ref: '#/components/parameters/exampleId'
+        - $ref: '#/components/parameters/X-Request-ID'
+      responses:
+        '200':
+          description: Example response
+          content:
+            'application/json; charset=utf-8':
+              schema:
+                $ref: '#/components/schemas/example'
+          headers:
+            X-Request-ID:
+              description: ID of the request, unique to the call, as determined by the #initiating party.
+              schema:
+                type: string
+                format: uuid 
+components:
+  schemas:
+    example:
+      type: object
+      properties:
+        id:
+          type: string
+          example: '42'
+  responses:
+    example_create_201:
+      description: New example created
+      headers:
+        X-Request-ID:
+          description: ID of the request, unique to the call, as determined by the #initiating party.
+          schema:
+            type: string
+            format: uuid 
+        Location:
+          description: Location of the new example
+          schema:
+            type: string
+            format: url
+          example: 'https://{{host}}/examples/1'
+      content:
+        'application/json; charset=utf-8':
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                example: '42'
+  parameters:
+    limit:
+      name: limit
+      in: query
+      description: max amount of items to return
+      required: false
+      schema:
+        type: integer
+        default: 10
+    skip:
+      name: skip
+      in: query
+      description: items to skip
+      required: false
+      schema:
+        type: integer
+        default: 0
+    exampleId:
+      name: exampleId
+      in: path
+      description: ID of example
+      required: true
+      schema:
+        type: string
+    X-Request-ID:
+      name: X-Request-ID
+      description: ID of the request, unique to the call, as determined by the initiating party.
+      schema:
+        type: string
+        format: uuid 
+      in: header
+      required: true
+  #examples:
+  requestBodies:
+    example_create:
+      description: Create example create request
+      required: true
+      content:
+        'application/json; charset=utf-8':
+          schema:
+            $ref: '#/components/schemas/example'
+  #headers:
+  #links:
+  #callbacks:
+  securitySchemes:
+    oAuth:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://example.com/api/oauth/dialog
+          tokenUrl: https://example.com/api/oauth/token
+          scopes:
+            write:examples: modify examples in your account
+            read:examples: read your examples 

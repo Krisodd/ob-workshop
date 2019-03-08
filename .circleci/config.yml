@@ -1,0 +1,157 @@
+version: 2
+jobs:
+  build_application:
+    docker:
+      - image: microsoft/dotnet:2.2-sdk
+    working_directory: /build
+    steps:
+      - checkout
+      - run:
+          name: Building the project
+          command: |
+            pushd /build/source
+            dotnet build -c Release
+            popd
+      - run:
+          name: Publish artifacts
+          command: |
+            export ZIPNAME=$CIRCLE_PROJECT_REPONAME-$CIRCLE_BRANCH-$CIRCLE_WORKFLOW_ID.zip
+            apt-get update -y && apt-get install -y --no-install-recommends zip
+            mkdir -p /build/artifacts
+            
+            pushd /build/source
+            dotnet publish --no-build -c Release -o /build/app
+            popd
+
+            pushd /build/app
+            zip -r /build/artifacts/$ZIPNAME *
+            popd
+      - store_artifacts:
+          path: /build/artifacts
+          destination: files
+      - persist_to_workspace:
+          root: /build
+          paths: 
+            - source
+            - app
+            - artifacts
+
+  build_docker:
+    docker:
+      - image: docker:18.09-git
+    working_directory: /build
+    steps:
+      - attach_workspace:
+          at: /build
+      - setup_remote_docker: 
+          docker_layer_caching: true
+      - run:
+          name: Docker login to registry
+          command: |
+            docker login -u $azureClientId -p $azureClientSecret dokken.azurecr.io
+      - run:
+          name: Build docker image, tag for test and push to registry
+          command: |
+            DOCKER_TEST_TAG=dokken.azurecr.io/$CIRCLE_PROJECT_REPONAME:test-$CIRCLE_SHA1
+            cd /build/app
+            docker build . -t $DOCKER_TEST_TAG
+            docker push $DOCKER_TEST_TAG
+
+  ## Dredd yet to support OpenAPI 3. Issue: https://github.com/apiaryio/api-elements.js/issues/71
+  #dredd_contract_tests:
+  #  docker:
+  #    - image: apiaryio/dredd:5.3.0
+  #    - image: dokken.azurecr.io/payment-evry-mock:$CIRCLE_SHA1
+  #      auth:
+  #        username: $azureClientId
+  #        password: $azureClientSecret
+  #      name: api
+  #  working_directory: /build
+  #  steps:
+  #    - attach_workspace:
+  #        at: /build
+  #    - run:
+  #        name: Run dredd contract tests
+  #        command: |
+  #          dredd swagger.yml http://api --reporter xunit \
+  #            -o test-results/dredd/contract_testresult.xml \
+  #            --hookfiles dredd/feature-toggles.hooks.js
+  #    - store_test_results:
+  #        path: test-results
+  #    - store_artifacts:
+  #        path: test-results
+
+  postman_api_tests:
+    docker:
+      - image: node:10-slim
+      - image: dokken.azurecr.io/$CIRCLE_PROJECT_REPONAME:test-$CIRCLE_SHA1
+        auth:
+          username: $azureClientId
+          password: $azureClientSecret
+        name: api
+    working_directory: /build
+    steps:
+      - checkout
+      - run:
+          name: Install Newman and dependenceis
+          command: |
+            npm install -g newman newman-reporter-junitfull
+      - run:
+          name: Run postman tests with newman
+          command: | 
+            cd postman
+            mkdir test-results
+            newman run 'Sparebanken Vest - Example API.postman_collection.json' --insecure \
+              -e 'Example API_CI.postman_environment.json' \
+              --folder functional-requirements \
+              -r junit,cli --reporter-junit-export './test-results/postman/result.xml'
+      - store_test_results:
+          path: test-results
+      - store_artifacts:
+          path: test-results
+
+  release_docker_image:
+    docker:
+      - image: docker:18.09-git
+    working_directory: /build
+    steps:
+      - attach_workspace:
+          at: /build
+      - setup_remote_docker: 
+          docker_layer_caching: true
+      - run:
+          name: Docker login to registry
+          command: |
+            docker login -u $azureClientId -p $azureClientSecret dokken.azurecr.io
+      - run:
+          name: Retag docker image
+          command: |
+            echo 'export GIT_HASH=`echo $CIRCLE_SHA1 | head -c 8`' >> $BASH_ENV; source $BASH_ENV
+            DOCKER_TEST_TAG=dokken.azurecr.io/$CIRCLE_PROJECT_REPONAME:test-$CIRCLE_SHA1
+            docker pull $DOCKER_TEST_TAG
+            DOCKER_TAG=dokken.azurecr.io/$CIRCLE_PROJECT_REPONAME:$GIT_HASH
+            docker image tag $DOCKER_TEST_TAG $DOCKER_TAG
+            docker push $DOCKER_TAG
+
+workflows:
+  version: 2
+  default:
+    jobs:
+      - build_application
+      - build_docker:
+          context: open-banking-prod
+          requires:
+            - build_application
+      - postman_api_tests:
+          context: open-banking-prod
+          requires:
+            - build_docker
+      - release_docker_image:
+          context: open-banking-prod
+          requires:
+            - postman_api_tests
+          filters:
+              branches:
+                  only:
+                    - master
+      

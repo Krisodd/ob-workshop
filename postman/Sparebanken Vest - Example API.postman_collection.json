@@ -1,0 +1,149 @@
+{
+	"info": {
+		"_postman_id": "757fed68-a4c4-4027-9ea9-4dfd9427b6a9",
+		"name": "Sparebanken Vest - Example API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "functional-requirements",
+			"item": [
+				{
+					"name": "List examples",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0b0a57e5-c2b5-409a-b49c-9dc0313d9a6b",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{HOST}}/v1/examples",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"v1",
+								"examples"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get existing example",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "9d0866d5-32ef-46fa-b15e-22a45d71f0c2",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{HOST}}/v1/examples/1",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"v1",
+								"examples",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get non-existing example",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "9d0866d5-32ef-46fa-b15e-22a45d71f0c2",
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{HOST}}/v1/examples/non-existing",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"v1",
+								"examples",
+								"non-existing"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "2040e663-9dc3-45a5-a104-f742636a9eec",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "f178617f-4e8c-4bde-869f-dd456f20a36b",
+				"type": "text/javascript",
+				"exec": [
+					"pm.test(\"Content-Type is correct\", function () {",
+					"    if(pm.response.text() !== \"\")",
+					"        pm.response.to.be.header(\"Content-Type\", \"application/json; charset=utf-8\");",
+					"});"
+				]
+			}
+		}
+	]
+}
